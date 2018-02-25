@@ -1,6 +1,7 @@
 # packages
 library(maxLik)
 library(dplyr)
+library(zeligverse)
 
 
 # data load
@@ -74,4 +75,13 @@ mlf <- function(param){
 # can be redefined at the beginnig of code
 mles <- maxLik(mlf, grad = NULL, hess = NULL, start = c(beta, mu), method = "bfgs",
               iterlim = 100)
+
+###### Estimation using zelig()
+
+data <- as.data.frame(cbind(as.factor(ifelse(y >= 6, 6, y)) , x))
+colnames(data) <- c('y', 'FAMSZEYR', 'ENDRFD12', 'RURSLT42', 'AGE31X')
+ologit <- zelig(y ~ FAMSZEYR + ENDRFD12 + RURSLT42 + AGE31X, model = "ologit", data = data)
+
+
+
 
