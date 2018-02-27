@@ -1,22 +1,21 @@
 # packages
 library(maxLik)
-library(dplyr)
 library(readstata13)
 library(zeligverse)
 library(dummies)
+library(dplyr)
 
 
-# data load
-data <- read.dta13('clean_data_micro.dta')
-x <- data[, c('adsmok42', 'age12x', 'ttlp12x', 'sex', 'racewx', 'eduyrdeg',
-              'inscov12', 'marry12x', 'famsze12', 'region12', 'rthlth42', 'adinsb42',
-              'adover42', 'phyexe53')]
-x <- x %>% mutate_if(is.integer, as.numeric) 
-s <- x %>% mutate_if(is.character, as.factor)
+######data load###### 
+data <- read.dta13('final_dataset.dta')
+x <- data[, c('adsmok42', 'age12x', 'ttlp12x', 'sex', 'white', 'edulvl',
+              'inscov12', 'marry12x', 'famsze12', 'region12', 'badhth', 'adinsb42',
+              'adover42', 'phyexe53', 'employed')]
+s <- x %>% select(- c(age12x, ttlp12x, famsze12)) %>% mutate_all(funs(as.factor))
 whatever <- cumsum(sapply(s %>% select_if(is.factor), function(x) length(unique(x))))
 dummies <- s %>% select_if(is.factor) %>% dummy.data.frame
-dummies <- dummies[, -whatever]
-X <- bind_cols(x %>% select_if(is.numeric), dummies)
+dummies <- dummies[, - c(1, whatever[-11])]
+X <- bind_cols(Filter(is.integer, x), dummies)
 X <- as.matrix(X)
 y <- data[, 'obdrv12']
 k <- ncol(X)
@@ -45,7 +44,7 @@ recoder <- function(q, number) {
   
 }
 
-###### ML functions
+###### ML functions ###### 
 mlf <- function(param){
   # we start by splitting the parameter vector
   bet <- param[1:k]
@@ -87,21 +86,56 @@ mles <- maxLik(mlf, grad = NULL, hess = NULL, start = c(beta, mu), method = "bfg
 
 
 # errors
-fisher_info <- - solve(mles$hessian)
-prop_sigma <- sqrt(diag(fisher_info))
+prop_sigma <- sqrt(diag(solve(- mles$hessian)))
+se <- 1.96 * prop_sigma
 upper <- mles$estimate + 1.96 * prop_sigma
 lower <- mles$estimate - 1.96 * prop_sigma
 interval <- data.frame(value = mles$estimate, lower = lower, upper = upper)
 interval 
 
-###### Estimation using zelig()
+
+# errors of marginal effects
+mfx_all <- function(param, atmean = TRUE){
+  # we start by splitting the parameter vector
+  bet <- param[1:k]
+  k1 <- length(bet)
+  mu <- param[(k + 1):(k + 7)]
+  # we get the Nx1 matrix of fitted values and marginal effects
+  xm <- as.matrix(colMeans(X))
+  xb <- t(xm) %*% bet
+  fxb <- ifelse(atmean == TRUE, plogis(xb) * (1 - plogis(xb)), 
+                mean(plogis(X %*% bet) * (1 - plogis(X %*% bet))))
+  mfx <- data.frame(mfx = fxb * bet, se = NA)
+  
+  # get standard errors
+  if(atmean){
+    gr <- (as.numeric(fxb)) * (diag(k1) + as.numeric(1 - 2 * plogis(xb)) * (bet %*% t(xm)))
+    mfx$se <- sqrt(diag(gr %*% diag(prop_sigma[1:k]) %*% t(gr)))            
+  } else {
+    gr <- apply(X, 1, function(x){
+      as.numeric(as.numeric(plogis(x %*% bet) * (1 - plogis(x %*% bet))) *
+                   (diag(k1) - (1 - 2 * as.numeric(plogis(x %*% bet))) * (bet %*% t(x))))
+    })  
+    gr <- matrix(apply(gr, 1, mean), nrow = k1)
+    mfx$se <- sqrt(diag(gr %*% diag(prop_sigma[1:k]) %*% t(gr)))                
+  }
+  
+  return(mfx)
+  
+}
+
+marginal <- mfx_all(mles$estimate, atmean = TRUE)
+marginal_average <- mfx_all(mles$estimate, atmean = FALSE)
+
+
+###### Estimation using built-in function ###### 
 
 mydata <- as.data.frame(cbind(as.factor(ifelse(y >= 6, 6, y)) , x))
 mydata <- mydata %>% mutate_if(is.character, as.factor) 
 colnames(mydata) <- c('y', colnames(x))
-ologit <- polr(y ~ adsmok42 + age12x + ttlp12x + sex + racewx + eduyrdeg +
-                inscov12 + marry12x + famsze12 + region12 + rthlth42 + adinsb42 +
-                adover42 + phyexe53, method = 'logistic', data = mydata)
+ologit <- zelig(y ~ adsmok42 + age12x + ttlp12x + sex + white + edulvl +
+                inscov12 + marry12x + famsze12 + region12 + badhth + adinsb42 +
+                adover42 + phyexe53 + employed, model = 'ologit', data = mydata)
 ologit
 
 
