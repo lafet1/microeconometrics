@@ -86,6 +86,14 @@ mles <- maxLik(mlf, grad = NULL, hess = NULL, start = c(beta, mu), method = "bfg
               iterlim = 100)
 
 
+# errors
+fisher_info <- - solve(mles$hessian)
+prop_sigma <- sqrt(diag(fisher_info))
+upper <- mles$estimate + 1.96 * prop_sigma
+lower <- mles$estimate - 1.96 * prop_sigma
+interval <- data.frame(value = mles$estimate, lower = lower, upper = upper)
+interval 
+
 ###### Estimation using zelig()
 
 mydata <- as.data.frame(cbind(as.factor(ifelse(y >= 6, 6, y)) , x))
