@@ -1,8 +1,8 @@
 # packages
 library(maxLik)
 library(readstata13)
-library(zeligverse)
 library(dummies)
+library(MASS)
 library(dplyr)
 
 
@@ -14,7 +14,7 @@ x <- data[, c('adsmok42', 'age12x', 'ttlp12x', 'sex', 'white', 'edulvl',
 s <- x %>% select(- c(age12x, ttlp12x, famsze12)) %>% mutate_all(funs(as.factor))
 whatever <- cumsum(sapply(s %>% select_if(is.factor), function(x) length(unique(x))))
 dummies <- s %>% select_if(is.factor) %>% dummy.data.frame
-dummies <- dummies[, - c(1, whatever[-11])]
+dummies <- dummies[, - c(1, 1 + whatever[-length(whatever)])]
 X <- bind_cols(Filter(is.integer, x), dummies)
 X <- as.matrix(X)
 y <- data[, 'obdrv12']
@@ -86,7 +86,7 @@ mles <- maxLik(mlf, grad = NULL, hess = NULL, start = c(beta, mu), method = "bfg
 
 
 # errors
-prop_sigma <- sqrt(diag(solve(- mles$hessian)))
+prop_sigma <- sqrt(diag(solve(-mles$hessian)))
 se <- 1.96 * prop_sigma
 upper <- mles$estimate + 1.96 * prop_sigma
 lower <- mles$estimate - 1.96 * prop_sigma
@@ -131,11 +131,12 @@ marginal_average <- mfx_all(mles$estimate, atmean = FALSE)
 ###### Estimation using built-in function ###### 
 
 mydata <- as.data.frame(cbind(as.factor(ifelse(y >= 6, 6, y)) , x))
-mydata <- mydata %>% mutate_if(is.character, as.factor) 
-colnames(mydata) <- c('y', colnames(x))
-ologit <- zelig(y ~ adsmok42 + age12x + ttlp12x + sex + white + edulvl +
-                inscov12 + marry12x + famsze12 + region12 + badhth + adinsb42 +
-                adover42 + phyexe53 + employed, model = 'ologit', data = mydata)
+aux <- mydata %>% select(- c(age12x, ttlp12x, famsze12)) %>% mutate_all(funs(as.factor))
+mydata <- bind_cols(aux, mydata %>% select(age12x, ttlp12x, famsze12))
+colnames(mydata)[1] <- 'y'
+ologit <- polr(y ~ age12x + ttlp12x + famsze12 + adsmok42 + sex + white + edulvl +
+                inscov12 + marry12x + region12 + badhth + adinsb42 +
+                adover42 + phyexe53 + employed, method = 'logistic', data = mydata)
 ologit
 
 
