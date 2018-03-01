@@ -94,39 +94,6 @@ interval <- data.frame(value = mles$estimate, lower = lower, upper = upper)
 interval 
 
 
-# errors of marginal effects
-mfx_all <- function(param, atmean = TRUE){
-  # we start by splitting the parameter vector
-  bet <- param[1:k]
-  k1 <- length(bet)
-  mu <- param[(k + 1):(k + 7)]
-  # we get the Nx1 matrix of fitted values and marginal effects
-  xm <- as.matrix(colMeans(X))
-  xb <- t(xm) %*% bet
-  fxb <- ifelse(atmean == TRUE, plogis(xb) * (1 - plogis(xb)), 
-                mean(plogis(X %*% bet) * (1 - plogis(X %*% bet))))
-  mfx <- data.frame(mfx = fxb * bet, se = NA)
-  
-  # get standard errors
-  if(atmean){
-    gr <- (as.numeric(fxb)) * (diag(k1) + as.numeric(1 - 2 * plogis(xb)) * (bet %*% t(xm)))
-    mfx$se <- sqrt(diag(gr %*% diag(prop_sigma[1:k]) %*% t(gr)))            
-  } else {
-    gr <- apply(X, 1, function(x){
-      as.numeric(as.numeric(plogis(x %*% bet) * (1 - plogis(x %*% bet))) *
-                   (diag(k1) - (1 - 2 * as.numeric(plogis(x %*% bet))) * (bet %*% t(x))))
-    })  
-    gr <- matrix(apply(gr, 1, mean), nrow = k1)
-    mfx$se <- sqrt(diag(gr %*% diag(prop_sigma[1:k]) %*% t(gr)))                
-  }
-  
-  return(mfx)
-  
-}
-
-marginal <- mfx_all(mles$estimate, atmean = TRUE)
-marginal_average <- mfx_all(mles$estimate, atmean = FALSE)
-
 
 ###### Estimation using built-in function ###### 
 
