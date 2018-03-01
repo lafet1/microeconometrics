@@ -140,4 +140,6 @@ ologit <- polr(y ~ age12x + ttlp12x + famsze12 + adsmok42 + sex + white + edulvl
 ologit
 
 
+##### control #####
+cbind(mles$estimate, c(ologit$coefficients, ologit$zeta))
 
