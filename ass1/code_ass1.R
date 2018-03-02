@@ -6,12 +6,12 @@ library(MASS)
 library(dplyr)
 
 
-######data load###### 
+###### data load###### 
 data <- read.dta13('final_dataset.dta')
-x <- data[, c('adsmok42', 'age12x', 'ttlp12x', 'sex', 'white', 'edulvl',
-              'inscov12', 'marry12x', 'famsze12', 'region12', 'badhth', 'adinsb42',
+x <- data[, c('adsmok42', 'age12x', 'faminc12', 'sex', 'white', 'edulvl',
+              'inscov12', 'marry12x', 'famsze12', 'region12', 'badhth',
               'adover42', 'phyexe53', 'employed')]
-s <- x %>% select(- c(age12x, ttlp12x, famsze12)) %>% mutate_all(funs(as.factor))
+s <- x %>% select(- c(age12x, faminc12, famsze12)) %>% mutate_all(funs(as.factor))
 whatever <- cumsum(sapply(s %>% select_if(is.factor), function(x) length(unique(x))))
 dummies <- s %>% select_if(is.factor) %>% dummy.data.frame
 dummies <- dummies[, - c(1, 1 + whatever[-length(whatever)])]
@@ -94,15 +94,14 @@ interval <- data.frame(value = mles$estimate, lower = lower, upper = upper)
 interval 
 
 
-
 ###### Estimation using built-in function ###### 
 
 mydata <- as.data.frame(cbind(as.factor(ifelse(y >= 6, 6, y)) , x))
-aux <- mydata %>% select(- c(age12x, ttlp12x, famsze12)) %>% mutate_all(funs(as.factor))
-mydata <- bind_cols(aux, mydata %>% select(age12x, ttlp12x, famsze12))
+aux <- mydata %>% select(- c(age12x, faminc12, famsze12)) %>% mutate_all(funs(as.factor))
+mydata <- bind_cols(aux, mydata %>% select(age12x, faminc12, famsze12))
 colnames(mydata)[1] <- 'y'
-ologit <- polr(y ~ age12x + ttlp12x + famsze12 + adsmok42 + sex + white + edulvl +
-                inscov12 + marry12x + region12 + badhth + adinsb42 +
+ologit <- polr(y ~ age12x + faminc12 + famsze12 + adsmok42 + sex + white + edulvl +
+                inscov12 + marry12x + region12 + badhth +
                 adover42 + phyexe53 + employed, method = 'logistic', data = mydata)
 ologit
 
