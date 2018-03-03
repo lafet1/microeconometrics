@@ -11,6 +11,8 @@ data <- read.dta13('final_dataset.dta')
 x <- data[, c('adsmok42', 'age12x', 'faminc12', 'sex', 'white', 'edulvl',
               'inscov12', 'marry12x', 'famsze12', 'region12', 'badhth',
               'adover42', 'phyexe53', 'employed')]
+
+# changing level variables into dummies to feed our ML estimation
 s <- x %>% select(- c(age12x, faminc12, famsze12)) %>% mutate_all(funs(as.factor))
 whatever <- cumsum(sapply(s %>% select_if(is.factor), function(x) length(unique(x))))
 dummies <- s %>% select_if(is.factor) %>% dummy.data.frame
@@ -43,6 +45,7 @@ recoder <- function(q, number) {
   return(z)
   
 }
+
 
 ###### ML functions ###### 
 mlf <- function(param){

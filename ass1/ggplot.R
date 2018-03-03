@@ -2,7 +2,7 @@
 library(ggplot2)
 
 
-# a few plots
+# a few pretty plots
 edulvl_ggpot <- ggplot(data = x, aes(edulvl, fill = 'indianred')) + geom_bar() + theme_minimal() + 
   labs(y = '# of people', x = 'Education level') +
   scale_x_discrete(limits = 1:6, labels = c("no degree","GED/high school", 
