@@ -1,6 +1,7 @@
 # packages
 library(np)
 library(dplyr)
+library(stargazer)
 
 
 ##### data load #####
@@ -40,10 +41,10 @@ end <- start - Sys.time()
 
 # now we simply estimate the nonparametric probit and get the fitted values
 np_probit <- npindex(bws = bw)
-fit <- fitted(np_probit)
+fit <- 2 * fitted(np_probit) - 1
 
 # data frame we need for second equation
-model_data <- data.frame(Y2, X, as.factor(Y1), fit, fit^2, fit^3)
+model_data <- data.frame(Y2, X, as.factor(Y1), fit, fit^2, fit^3, fit^4, fit^5)
 
 # second equation using the Newey estimator
 main_model <- lm(Y2 ~ ., data = model_data)
@@ -84,13 +85,13 @@ boot_se <- function(data, index = nrow(data)){
   fit <- fitted(np_probit)
   
   # prepare the data for second equation
-  model_data <- data.frame(Y2, X, Y1 = as.factor(Y1), fit, fit^2, fit^3)
+  model_data <- data.frame(Y2, X, Y1 = as.factor(Y1), fit, fit^2, fit^3, fit^4, fit^5)
   
   # estimate second equation
   main_model <- lm(Y2 ~ ., data = model_data)
   
   # return the model summary so we can get the bootstrapped SE's
-  return(coef(summary(main_model)))
+  return(coef(summary(main_model))[, 1])
   
 }
 
@@ -103,4 +104,15 @@ for (i in 1:50) {
 # saveRDS(results, file = 'bootstrap_results.rds')
 # to load results use readRDS('bootstrap_results.rds') - RDS allows us to save and read
 # list objects, this loop took the night, so it is good practice to save it
+
+np_se <- c()
+for (i in 1:50){
+  np_se <- cbind(np_se, results[[i]])
+}
+
+
+np_boot_1 <- sqrt(rowSums((apply(np_se, 2, function(x) (x - coef(summary(main_model))[, 1])))^2) / 
+                 (dim(np_se)[2] - 1))
+
+np_t_1 <- coef(summary(main_model))[, 1] / np_boot_1
 
