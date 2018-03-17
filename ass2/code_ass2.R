@@ -1,7 +1,6 @@
 # packages
 library(np)
 library(dplyr)
-library(stargazer)
 
 
 ##### data load #####
@@ -111,7 +110,7 @@ for (i in 1:50){
 }
 
 
-np_boot_1 <- sqrt(rowSums((apply(np_se, 2, function(x) (x - coef(summary(main_model))[, 1])))^2) / 
+np_boot_1 <- sqrt(rowSums((apply(np_se, 2, function(x) (x - rowSums(np_se) / dim(np_se)[2])))^2) / 
                  (dim(np_se)[2] - 1))
 
 np_t_1 <- coef(summary(main_model))[, 1] / np_boot_1
