@@ -1,6 +1,8 @@
 # packages
 library(np)
 library(dplyr)
+library(doSNOW)
+library(foreach)
 
 
 ##### data load #####
@@ -32,7 +34,7 @@ Y2 <- data$expenditure
 # we start by estimating the model without bootstrap to get and idea
 start <- Sys.time()
 bw <- npindexbw(xdat = Z, ydat = Y1,
-                nmulti = 5, optim.reltol = 0.1)
+                nmulti = 5, optim.reltol = 0.1, method = 'kleinspady')
 end <- start - Sys.time()
 
 # the nonparametric approach is very slow so we impose tolerance in the optimization
@@ -79,7 +81,7 @@ boot_se <- function(data, index = nrow(data)){
 
   # we run the nonparametric probit
   bw <- npindexbw(xdat = Z, ydat = Y1, 
-                  nmulti = 5, optim.reltol = 0.1)
+                  nmulti = 5, optim.reltol = 0.1, method = 'kleinspady')
   np_probit <- npindex(bws = bw)
   fit <- fitted(np_probit)
   
@@ -94,24 +96,25 @@ boot_se <- function(data, index = nrow(data)){
   
 }
 
-# for loop for estimating the actual bootstrap replication and preparation of the list
-results <- list()
-for (i in 1:50) {
-  results[[i]] <- boot_se(data)
+
+# bootstrap for loop, parallel
+cl <- makeCluster(3)
+registerDoSNOW(cl)
+
+results <- foreach(i = 1:50, .packages = c('np', 'dplyr'), .combine=cbind) %dopar% {
+  boot_se(data)
 }
+
+stopCluster(cl)
+
 
 # saveRDS(results, file = 'bootstrap_results.rds')
 # to load results use readRDS('bootstrap_results.rds') - RDS allows us to save and read
 # list objects, this loop took the night, so it is good practice to save it
 
-np_se <- c()
-for (i in 1:50){
-  np_se <- cbind(np_se, results[[i]])
-}
 
-
-np_boot_1 <- sqrt(rowSums((apply(np_se, 2, function(x) (x - rowSums(np_se) / dim(np_se)[2])))^2) / 
-                 (dim(np_se)[2] - 1))
+np_boot_1 <- sqrt(rowSums((apply(results, 2, function(x) (x - rowSums(results) / dim(results)[2])))^2) / 
+                 (dim(results)[2] - 1))
 
 np_t_1 <- coef(summary(main_model))[, 1] / np_boot_1
 
